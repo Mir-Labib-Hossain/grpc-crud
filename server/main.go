@@ -123,3 +123,15 @@ func (*server) UpdateMovie(ctx context.Context, req *pb.UpdateMovieRequest) (*pb
 		},
 	}, nil
 }
+
+func (*server) DeleteMovie(ctx context.Context, req *pb.DeleteMovieRequest) (*pb.DeleteMovieResponse, error) {
+	fmt.Println("Update Movie ", req.GetId())
+	var movie Movie
+	res := DB.Where("id=?", req.GetId()).Delete(&movie)
+	if res.RowsAffected == 0 {
+		return nil, errors.New("movie not found to delete")
+	}
+	return &pb.DeleteMovieResponse{
+		Success: true,
+	}, nil
+}
