@@ -102,3 +102,24 @@ func (*server) GetMovies(ctx context.Context, req *pb.ReadMoviesRequest) (*pb.Re
 		Movies: movies,
 	}, nil
 }
+
+func (*server) UpdateMovie(ctx context.Context, req *pb.UpdateMovieRequest) (*pb.UpdateMovieResponse, error) {
+	fmt.Println("Update Movie ", req.Movie.GetId())
+	var movie Movie
+	reqMovie := req.GetMovie()
+
+	res := DB.Model(&movie).Where("id=?", reqMovie.Id).Updates(Movie{
+		Title: reqMovie.Title,
+		Genre: reqMovie.Genre,
+	})
+	if res.RowsAffected == 0 {
+		return nil, errors.New("movie not found to update")
+	}
+	return &pb.UpdateMovieResponse{
+		Movie: &pb.Movie{
+			Id:    movie.ID,
+			Title: movie.Title,
+			Genre: movie.Genre,
+		},
+	}, nil
+}
