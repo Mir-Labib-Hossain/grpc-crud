@@ -1,15 +1,21 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"time"
 
 	pb "github.com/Mir-Labib-Hossain/grpc-crud/proto"
+	"github.com/google/uuid"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+var DB *gorm.DB
+var err error
 
 func init() {
 	DatabaseConnection()
@@ -44,4 +50,26 @@ var (
 
 type server struct {
 	pb.UnimplementedMovieServiceServer
+}
+
+func (*server) CreateMovie(ctx context.Context, req *pb.CreateMovieRequest) (*pb.CreateMovieResponse, error) {
+	fmt.Println("Create Movie")
+	movie := req.GetMovie()
+	movie.Id = uuid.New().String()
+	data := Movie{
+		ID:    movie.GetId(),
+		Title: movie.GetTitle(),
+		Genre: movie.GetGenre(),
+	}
+	res := DB.Create(&data)
+	if res.RowsAffected == 0 {
+		return nil, errors.New("failed to create movie")
+	}
+	return &pb.CreateMovieResponse{
+		Movie: &pb.Movie{
+			Id:    movie.GetId(),
+			Title: movie.GetTitle(),
+			Genre: movie.GetGenre(),
+		},
+	}, nil
 }
