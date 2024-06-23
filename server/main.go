@@ -90,3 +90,15 @@ func (*server) GetMovie(ctx context.Context, req *pb.ReadMovieRequest) (*pb.Read
 	}, nil
 
 }
+
+func (*server) GetMovies(ctx context.Context, req *pb.ReadMoviesRequest) (*pb.ReadMoviesResponse, error) {
+	fmt.Println("Get Movies")
+	movies := []*pb.Movie{}
+	res := DB.Find(&movies)
+	if res.RowsAffected == 0 {
+		return nil, errors.New("failed to get movies")
+	}
+	return &pb.ReadMoviesResponse{
+		Movies: movies,
+	}, nil
+}
