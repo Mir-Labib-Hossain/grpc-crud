@@ -6,16 +6,32 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"time"
 
 	pb "github.com/Mir-Labib-Hossain/grpc-crud/proto"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 var DB *gorm.DB
 var err error
+
+func main() {
+	fmt.Println("gRPC server running")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterMovieServiceServer(s, &server{})
+	log.Printf("Server listening at %v", lis.Addr())
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
 
 func init() {
 	DatabaseConnection()
@@ -36,12 +52,22 @@ func DatabaseConnection() {
 	dbUser := "postgres"
 	dbPassword := "1234"
 	dsn := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable", host, port, dbUser, dbName, dbPassword)
-	DB, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	DB.AutoMigrate(Movie{})
+
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Error connecting to db ", err)
+		return
 	}
-	fmt.Println("DB connected")
+
+	// Call AutoMigrate after successful connection
+	err = DB.AutoMigrate(&Movie{})
+	if err != nil {
+		log.Fatal("Error during migration ", err)
+		return
+	}
+
+	fmt.Println("DB connected successfully")
+	fmt.Println("DSN:", dsn)
 }
 
 var (
@@ -96,7 +122,7 @@ func (*server) GetMovies(ctx context.Context, req *pb.ReadMoviesRequest) (*pb.Re
 	movies := []*pb.Movie{}
 	res := DB.Find(&movies)
 	if res.RowsAffected == 0 {
-		return nil, errors.New("failed to get movies")
+		return nil, errors.New("movie not found")
 	}
 	return &pb.ReadMoviesResponse{
 		Movies: movies,
@@ -105,6 +131,7 @@ func (*server) GetMovies(ctx context.Context, req *pb.ReadMoviesRequest) (*pb.Re
 
 func (*server) UpdateMovie(ctx context.Context, req *pb.UpdateMovieRequest) (*pb.UpdateMovieResponse, error) {
 	fmt.Println("Update Movie ", req.Movie.GetId())
+
 	var movie Movie
 	reqMovie := req.GetMovie()
 
